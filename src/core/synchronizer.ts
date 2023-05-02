@@ -123,11 +123,14 @@ export class Synchronizer extends WorkspaceState {
         if (!repository.activeBranch) {
           continue
         }
-        logger.appendLine(`Saving open files state for branch: "${repository.activeBranch}"`)
 
+        const openFiles = getOpenFiles()
+
+        logger.appendLine(`Saving open files state for branch: "${repository.activeBranch}"...`)
         await super.updateState(repository, {
-          files: getOpenFiles(),
+          files: openFiles,
         })
+        logger.appendLine(`...saved ${openFiles.length} files`)
       }
     }, 1000)
   }
