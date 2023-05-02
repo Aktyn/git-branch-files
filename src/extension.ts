@@ -1,28 +1,19 @@
-import { type ExtensionContext } from 'vscode'
+import { workspace, type ExtensionContext } from 'vscode'
 import { CONFIG } from './config'
 import { GitAPI } from './core/gitAPI'
-import { getOpenFiles } from './core/helpers'
-import { logger } from './logger'
 import { Synchronizer } from './core/synchronizer'
+import { logError, logger } from './logger'
 
 export function activate(context: ExtensionContext) {
   logger.appendLine(`Extension "${CONFIG.extensionId}" is now active!`)
 
   try {
-    logger.appendLine(
-      `Open files ${JSON.stringify(
-        getOpenFiles().map((openFile) => openFile.label),
-        null,
-        2,
-      )}`,
-    )
-
     const synchronizer = new Synchronizer(context)
     const git = new GitAPI(context, {
       onFilesRestoreRequest: (repository) => {
         logger.appendLine(`Restore files for branch: ${repository.activeBranch}`)
 
-        synchronizer.restoreFiles(repository)
+        synchronizer.restoreFiles(repository).catch((error) => logError(error))
       },
     })
 
@@ -30,9 +21,23 @@ export function activate(context: ExtensionContext) {
       context.subscriptions.push(
         synchronizer.startSynchronization(() => git.getActiveRepositories()),
       )
+
+      workspace.onDidOpenTextDocument((document) => {
+        if (document.uri.scheme !== 'file') {
+          return
+        }
+        synchronizer.synchronize(git.getActiveRepositories())
+      })
+
+      workspace.onDidCloseTextDocument((document) => {
+        if (document.uri.scheme !== 'file') {
+          return
+        }
+        synchronizer.synchronize(git.getActiveRepositories())
+      })
     }
   } catch (error) {
-    logger.appendLine(`Error ${error}`)
+    logError(error)
   }
 }
 

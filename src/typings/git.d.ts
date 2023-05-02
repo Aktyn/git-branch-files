@@ -57,7 +57,7 @@ export interface Remote {
 }
 
 export interface Change {
-	// TODO
+	// ?
 }
 
 export interface RepositoryState {

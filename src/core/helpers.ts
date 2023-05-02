@@ -1,7 +1,7 @@
 import { Uri, window } from 'vscode'
 
 export interface OpenFileSchema {
-  uri: Uri
+  path: Uri['path']
   label: string
   isActive: boolean
   isPinned: boolean
@@ -12,12 +12,12 @@ export function getOpenFiles() {
     for (const tab of group.tabs) {
       const uri = hasUri(tab.input) ? tab.input.uri : null
 
-      if (!uri || uri.scheme !== 'file' || acc.some((file) => file.uri.path === uri.path)) {
+      if (!uri || uri.scheme !== 'file' || acc.some((file) => file.path === uri.path)) {
         continue
       }
 
       acc.push({
-        uri,
+        path: uri.path,
         label: tab.label,
         isActive: tab.isActive,
         isPinned: tab.isPinned,
@@ -27,6 +27,6 @@ export function getOpenFiles() {
   }, [] as OpenFileSchema[])
 }
 
-function hasUri(input: unknown): input is { uri: Uri } {
+export function hasUri(input: unknown): input is { uri: Uri } {
   return (input as { uri: Uri })?.uri instanceof Uri
 }
