@@ -1,6 +1,6 @@
 import { Uri, window } from 'vscode'
 
-interface OpenFileSchema {
+export interface OpenFileSchema {
   uri: Uri
   label: string
   isActive: boolean

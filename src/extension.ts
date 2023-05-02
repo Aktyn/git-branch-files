@@ -1,9 +1,11 @@
-import { extensions, type ExtensionContext } from 'vscode'
+import { type ExtensionContext } from 'vscode'
 import { CONFIG } from './config'
+import { GitAPI } from './core/gitAPI'
 import { getOpenFiles } from './core/helpers'
 import { logger } from './logger'
+import { Synchronizer } from './core/synchronizer'
 
-export function activate(_context: ExtensionContext) {
+export function activate(context: ExtensionContext) {
   logger.appendLine(`Extension "${CONFIG.extensionId}" is now active!`)
 
   try {
@@ -15,24 +17,20 @@ export function activate(_context: ExtensionContext) {
       )}`,
     )
 
-    const gitExtension = extensions.getExtension('vscode.git')?.exports
-    const gitApi = gitExtension.getAPI(1)
-    for (const name in gitApi.git) {
-      logger.appendLine(`Test: ${name}, ${!!gitApi.onDidChangeState}`)
-    }
-    gitApi.onDidChangeState((state: any) => {
-      try {
-        logger.appendLine(`State: ${JSON.stringify(state, null, 2)}`)
-        if (state.branch) {
-          const branchName = state.branch.name
-          // Do something with the branch name...
+    const synchronizer = new Synchronizer(context)
+    const git = new GitAPI(context, {
+      onFilesRestoreRequest: (repository) => {
+        logger.appendLine(`Restore files for branch: ${repository.activeBranch}`)
 
-          logger.appendLine(`Branch name: ${branchName}`)
-        }
-      } catch (error) {
-        logger.appendLine(`Error ${error}`)
-      }
+        synchronizer.restoreFiles(repository)
+      },
     })
+
+    if (git.initialized) {
+      context.subscriptions.push(
+        synchronizer.startSynchronization(() => git.getActiveRepositories()),
+      )
+    }
   } catch (error) {
     logger.appendLine(`Error ${error}`)
   }
