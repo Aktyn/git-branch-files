@@ -17,5 +17,7 @@ This feature is built-in in other IDEs like IntelliJ.
 ---
 
 ## Release Notes
-### 1.0.0
+### 2.0.0
 - Initial release
+### 2.0.1
+- Improve closing end opening files
