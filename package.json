@@ -4,7 +4,7 @@
   "publisher": "Aktyn",
   "icon": "res/logo_128x128.png",
   "description": "This extension adds to vscode a feature that automatically synchronizes the list of open files according to the current git branch.",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "author": "Radosław Krajewski (Aktyn) <aktyn3@gmail.com>",
   "license": "GPL-3.0",
   "repository": {

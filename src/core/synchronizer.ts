@@ -1,5 +1,5 @@
 import * as path from 'path'
-import type { Tab } from 'vscode'
+import type { Tab, TextDocument } from 'vscode'
 import { window, workspace } from 'vscode'
 import { CONFIG } from '../config'
 import { logError, logger } from '../logger'
@@ -48,27 +48,29 @@ export class Synchronizer extends WorkspaceState {
       })
 
       try {
-        const openedDocuments = await Promise.all(
-          filesToRestore.map((file) => {
+        let documentToFocus: TextDocument | null = null
+        for (const file of filesToRestore) {
+          try {
             logger.appendLine(`Restoring file: "${path.relative(repository.uri.path, file.path)}"`)
-            return workspace.openTextDocument(file.path).then((document) => ({ document, file }))
-          }),
-        )
+            const document = await workspace.openTextDocument(file.path)
+            await window.showTextDocument(document, {
+              preview: false,
+              preserveFocus: true,
+            })
 
-        for (const { document } of openedDocuments) {
-          //TODO: pin document if it was pinned on branch of origin
-          await window.showTextDocument(document, {
-            preview: false,
-            preserveFocus: true,
-          })
+            if (file.isActive) {
+              documentToFocus = document
+            }
+          } catch (error) {
+            logError(error)
+          }
         }
 
-        const active = openedDocuments.find(({ file }) => file.isActive)
-        if (active) {
+        if (documentToFocus) {
           logger.appendLine(
-            `Activating file: "${path.relative(repository.uri.path, active.file.path)}"`,
+            `Activating file: "${path.relative(repository.uri.path, documentToFocus.uri.path)}"`,
           )
-          await window.showTextDocument(active.document, {
+          await window.showTextDocument(documentToFocus, {
             preview: false,
             preserveFocus: false,
           })
@@ -147,13 +149,25 @@ export class Synchronizer extends WorkspaceState {
 
   private async closeAllOpenFiles(protectPinned = false) {
     const pinnedTabs: Tab[] = []
+    const tabsToClose: Tab[] = []
+
     for (const tabGroup of window.tabGroups.all) {
       for (const tab of tabGroup.tabs) {
         if (tab.isPinned && protectPinned) {
           pinnedTabs.push(tab)
           continue
         }
+        tabsToClose.push(tab)
+      }
+    }
 
+    try {
+      await window.tabGroups.close(tabsToClose)
+    } catch (error) {
+      logError(error)
+      logger.appendLine('Trying to close files one by one...')
+
+      for (const tab of tabsToClose) {
         try {
           await window.tabGroups.close(tab)
         } catch (error) {
@@ -161,6 +175,7 @@ export class Synchronizer extends WorkspaceState {
         }
       }
     }
+
     return { pinnedTabs }
   }
 }
